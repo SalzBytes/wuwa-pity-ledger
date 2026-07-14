@@ -1,0 +1,81 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body {
+    @apply bg-void text-ink font-body antialiased;
+  }
+  h1, h2, h3, .font-display {
+    font-family: '"Chakra Petch"', sans-serif;
+  }
+  /* remove number-input spinners */
+  input[type='number']::-webkit-inner-spin-button,
+  input[type='number']::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type='number'] {
+    -moz-appearance: textfield;
+  }
+}
+
+@layer components {
+  /* seven-seg style readout */
+  .led {
+    font-family: '"JetBrains Mono"', monospace;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-shadow: 0 0 12px currentColor;
+    line-height: 1;
+  }
+
+  /* recessed reel bezel */
+  .bezel {
+    background: radial-gradient(circle at 50% 0%, #1e2537 0%, #0c0f16 100%);
+    border: 1px solid #242c3f;
+  }
+  .shadow-reel {
+    box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.65), 0 10px 30px rgba(0, 0, 0, 0.45);
+  }
+
+  .tab-active {
+    @apply bg-brass text-void border-brass;
+    box-shadow: 0 4px 16px rgba(217, 172, 79, 0.28);
+  }
+
+  /* history chip band accents (used via bandColorClass) */
+  .band-green { @apply text-lucky; }
+  .band-yellow { @apply text-soft; }
+  .band-red { @apply text-hard; }
+}
+
+/* --- animations --- */
+.reel-spin .led {
+  animation: reelBlur 0.06s linear infinite;
+}
+@keyframes reelBlur {
+  0% { opacity: 0.55; transform: translateY(-1px); }
+  50% { opacity: 1; }
+  100% { opacity: 0.55; transform: translateY(1px); }
+}
+
+.modal-anim {
+  animation: modalIn 0.18s ease-out;
+}
+@keyframes modalIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.toast-anim {
+  animation: toastIn 0.22s ease-out;
+}
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(16px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* thin scrollbars for tab strip */
+::-webkit-scrollbar { height: 6px; width: 6px; }
+::-webkit-scrollbar-thumb { background: #242c3f; border-radius: 999px; }

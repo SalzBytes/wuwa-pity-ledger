@@ -1,0 +1,1805 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Pity Ledger — Wuthering Waves Convene Tracker</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              display: [
+                '"Chakra Petch"', 'sans-serif'
+              ],
+              body: [
+                '"Inter"', 'sans-serif'
+              ],
+              mono: ['"JetBrains Mono"', 'monospace']
+            },
+            colors: {
+              void: '#080a10',
+              panel: '#11151f',
+              panel2: '#171d2b',
+              panel3: '#1e2537',
+              hairline: '#242c3f',
+              brass: '#d9ac4f',
+              brassdim: '#8a6d2f',
+              brassglow: '#f2c869',
+              lucky: '#34d399',
+              luckydim: '#12362a',
+              soft: '#f5b942',
+              softdim: '#3a2c10',
+              hard: '#ff5d6c',
+              harddim: '#3a1418',
+              ink: '#e9edf6',
+              faint: '#6d7891'
+            },
+            boxShadow: {
+              reel: 'inset 0 2px 10px rgba(0,0,0,0.65), 0 10px 30px rgba(0,0,0,0.45)'
+            }
+          }
+        }
+      }
+    </script>
+
+    <style>
+      html {
+        scrollbar-color: #2a3348 #0d1119;
+      }
+      body {
+        background: radial-gradient(120% 140% at 15% -10%, #131a2a 0%, #080a10 55%);
+      }
+
+      .bezel {
+        background: linear-gradient(155deg, #2a2210 0%, #1a1608 40%, #221c0d 100%);
+        border: 1px solid #4a3c17;
+      }
+      .led {
+        font-family: 'JetBrains Mono', monospace;
+        text-shadow: 0 0 14px currentColor, 0 0 2px currentColor;
+        letter-spacing: 2px;
+      }
+      @keyframes flicker {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.55;
+        }
+      }
+      .reel-spin .led {
+        animation: flicker 0.09s linear infinite;
+      }
+
+      @keyframes pop-in {
+        0% {
+          transform: scale(0.4) translateY(6px);
+          opacity: 0;
+        }
+        60% {
+          transform: scale(1.08);
+          opacity: 1;
+        }
+        100% {
+          transform: scale(1);
+        }
+      }
+      .chip-pop {
+        animation: pop-in 0.32s cubic-bezier(.2,.9,.3,1.3);
+      }
+
+      @keyframes toast-in {
+        from {
+          transform: translateY(-10px);
+          opacity: 0;
+        }
+        to {
+          transform: translateY(0);
+          opacity: 1;
+        }
+      }
+      .toast-anim {
+        animation: toast-in 0.25s ease-out;
+      }
+
+      ::-webkit-scrollbar {
+        height: 8px;
+        width: 8px;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #2a3348;
+        border-radius: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      input[type=number]::-webkit-inner-spin-button,
+      input[type=number]::-webkit-outer-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+      }
+      input[type=number] {
+        -moz-appearance: textfield;
+      }
+
+      .band-green {
+        background: #34d399;
+        color: #05130c;
+      }
+      .band-yellow {
+        background: #f5b942;
+        color: #1f1400;
+      }
+      .band-red {
+        background: #ff5d6c;
+        color: #1f0507;
+      }
+
+      .tab-active {
+        border-color: #d9ac4f !important;
+        color: #f2c869 !important;
+        background: #1e2537 !important;
+      }
+
+      .win-pip {
+        box-shadow: 0 0 0 1px rgba(0,0,0,0.3) inset;
+      }
+    </style>
+  </head>
+
+  <body class="min-h-screen text-ink font-body antialiased">
+
+    <div id="toastHost" class="fixed top-4 right-4 z-50 flex flex-col gap-2 items-end"></div>
+
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-8">
+
+      <!-- Header -->
+      <header class="mb-6">
+        <div class="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <h1 class="font-display text-3xl sm:text-4xl font-700 tracking-tight text-ink flex items-center gap-3">
+              <span class="inline-flex items-center justify-center w-11 h-11 rounded-xl bezel text-brassglow led text-lg shadow-reel">80</span>
+          Pity Ledger
+        </h1>
+            <p class="text-faint text-sm mt-1.5 font-body">Convene tracking for Wuthering Waves — pity, soft pity, 50/50s, and Astrite math.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="exportBtn" class="px-3.5 py-2 rounded-full text-xs font-600 bg-panel2 border border-hairline text-faint hover:text-ink hover:border-brassdim transition">⬇ Export</button>
+            <label class="px-3.5 py-2 rounded-full text-xs font-600 bg-panel2 border border-hairline text-faint hover:text-ink hover:border-brassdim transition cursor-pointer">
+          ⬆ Import
+          <input id="importInput" type="file" accept=".json" class="hidden"/>
+            </label>
+          </div>
+        </div>
+      </header>
+
+      <!-- Banner tabs -->
+      <div class="flex items-center gap-2 mb-5 overflow-x-auto pb-1" id="bannerTabs"></div>
+
+      <!-- Legend -->
+      <div class="flex flex-wrap gap-x-6 gap-y-2 bg-panel border border-hairline rounded-full px-5 py-3 mb-6 text-sm">
+        <span class="flex items-center gap-2">
+          <span class="w-3.5 h-3.5 rounded-md band-green"></span>
+          <span class="text-faint">Lucky</span></span>
+        <span class="flex items-center gap-2">
+          <span class="w-3.5 h-3.5 rounded-md band-yellow"></span>
+          <span class="text-faint">Soft pity</span></span>
+        <span class="flex items-center gap-2">
+          <span class="w-3.5 h-3.5 rounded-md band-red"></span>
+          <span class="text-faint">Hard pity</span></span>
+        <span class="text-faint ml-auto" id="thresholdSummary">—</span>
+        <button id="settingsBtn" class="text-brass hover:text-brassglow font-600">⚙ Banner settings</button>
+      </div>
+
+      <!-- Live Convene tracker -->
+      <div class="bg-panel border border-hairline rounded-2xl p-5 mb-6">
+        <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+          <div class="text-xs uppercase tracking-widest text-faint font-600">Live convene progress</div>
+          <button id="guaranteeBadge" class="hidden text-xs font-700 px-3 py-1 rounded-full transition cursor-pointer" title="Click to toggle manually"></button>
+        </div>
+        <div class="flex flex-wrap items-center gap-5">
+          <div class="flex items-baseline gap-1.5">
+            <span id="currentPityNum" class="led text-4xl text-brassglow">0</span>
+            <span class="text-faint text-sm">/ <span id="currentPityMax">80</span> pulls</span>
+          </div>
+          <div class="flex-1 min-w-[160px]">
+            <div class="h-3 rounded-full bg-void border border-hairline overflow-hidden relative">
+              <div id="pityProgressBar" class="h-full bg-gradient-to-r from-lucky via-soft to-hard transition-all duration-300" style="width:0%"></div>
+              <div id="softMarker" class="absolute top-0 h-full w-px bg-brassglow/70"></div>
+            </div>
+            <div class="flex justify-between text-[11px] text-faint mt-1">
+              <span>0</span>
+              <span id="softMarkerLabel">soft pity</span>
+              <span id="maxLabel">80</span>
+            </div>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button id="minusPullBtn" class="w-9 h-9 rounded-full bg-panel2 border border-hairline text-ink hover:border-brassdim font-700">−</button>
+            <button id="plusPullBtn" class="w-9 h-9 rounded-full bg-panel2 border border-hairline text-ink hover:border-brassdim font-700">+</button>
+            <button id="logFiveStarBtn" class="px-4 py-2 rounded-full bg-hard text-[#2a0509] font-700 hover:brightness-110 active:scale-95 transition text-sm">⭑ Got the 5-star!</button>
+          </div>
+        </div>
+        <p class="text-xs text-faint mt-2">Tap <span class="text-ink font-600">+</span> for every pull, including the one that hits — then tap <span class="text-ink font-600">Got the 5-star!</span> to log that exact number and reset to 0.</p>
+        <div class="flex flex-wrap items-center justify-between gap-3 mt-3 pt-4 border-t border-hairline">
+          <div class="text-sm text-faint">
+        Astrite to guarantee: <span id="astriteToGuarantee" class="text-ink font-700 font-mono">—</span>
+            <span class="text-faint/70">(<span id="pullsToGuarantee">—</span> pulls left · 160 Astrite/pull)</span>
+          </div>
+          <div class="flex items-center gap-2 text-xs">
+            <span class="text-faint">Sync counter:</span>
+            <input id="syncPityInput" type="number" min="0" class="w-16 bg-void border border-hairline rounded-lg px-2 py-1 text-ink outline-none focus:border-brass font-mono"/>
+            <button id="syncPityBtn" class="px-3 py-1 rounded-full bg-panel2 border border-hairline text-faint hover:text-ink hover:border-brassdim">Set</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Reel -->
+      <div class="bg-panel border border-hairline rounded-2xl p-5 flex flex-wrap items-center gap-5 justify-between mb-6">
+        <div>
+          <div class="text-xs uppercase tracking-widest text-faint font-600 mb-2">Predicted next pity</div>
+          <div class="flex items-center gap-3">
+            <div id="reel" class="bezel rounded-xl w-24 h-16 flex items-center justify-center shadow-reel">
+              <span id="reelDigits" class="led text-4xl text-brassglow">--</span>
+            </div>
+            <div>
+              <div id="predConfidence" class="text-ink font-600">—</div>
+              <div id="predBand" class="text-xs text-faint">bootstrap · 10,000 draws</div>
+            </div>
+          </div>
+        </div>
+        <div class="flex flex-col items-end gap-2">
+          <button id="simulateBtn" class="px-5 py-2.5 rounded-full bg-brass text-[#241a04] font-700 hover:brightness-110 active:scale-95 transition shadow-[0_6px_18px_rgba(217,172,79,0.25)]">🎲 Simulate pull</button>
+          <label class="flex items-center gap-2 text-xs text-faint cursor-pointer select-none">
+            <input id="weightToggle" type="checkbox" class="accent-brass w-3.5 h-3.5"/>
+        Weight recent pulls more
+      </label>
+        </div>
+      </div>
+
+      <!-- Manual log -->
+      <div class="bg-panel border border-hairline rounded-2xl p-5 mb-6">
+        <div class="text-xs uppercase tracking-widest text-faint font-600 mb-3">Log a completed pull manually</div>
+        <div class="flex gap-2 flex-wrap">
+          <input id="newPity" type="number" min="0" placeholder="Pity # when 5★ landed" class="flex-1 min-w-[140px] bg-void border border-hairline rounded-xl px-4 py-2.5 text-ink outline-none focus:border-brass transition font-mono"/>
+          <button id="addBtn" class="px-5 py-2.5 rounded-xl bg-lucky text-[#062012] font-700 hover:brightness-110 active:scale-95 transition">Add</button>
+        </div>
+        <p class="text-xs text-faint mt-2">Use this to backfill history. For live tracking, use the counter above instead.</p>
+      </div>
+
+      <!-- Stats -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6" id="statsGrid"></div>
+
+      <!-- Probability + Luck -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
+        <div class="bg-panel border border-hairline rounded-2xl p-5">
+          <div class="text-xs uppercase tracking-widest text-faint font-600 mb-3">Outcome distribution</div>
+          <div class="flex flex-col gap-2.5" id="probBars"></div>
+        </div>
+        <div class="bg-panel border border-hairline rounded-2xl p-5">
+          <div class="text-xs uppercase tracking-widest text-faint font-600 mb-3 flex items-center justify-between">
+            <span>Luck index</span>
+            <span id="luckLabel" class="text-ink font-700 font-display">—</span>
+          </div>
+          <div class="h-3 rounded-full bg-void border border-hairline overflow-hidden relative">
+            <div id="luckBar" class="h-full rounded-full transition-all duration-500" style="width:50%"></div>
+            <div class="absolute top-0 left-1/2 -translate-x-1/2 h-full w-px bg-hairline"></div>
+          </div>
+          <div class="flex justify-between text-[11px] text-faint mt-1.5">
+            <span>Unlucky</span>
+            <span>Baseline</span>
+            <span>Lucky</span>
+          </div>
+          <p class="text-xs text-faint mt-3" id="luckNote">Compares your average pity to a uniform baseline for this banner's cap.</p>
+        </div>
+      </div>
+
+      <!-- Insights -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6" id="insightsGrid"></div>
+
+      <!-- History -->
+      <div class="bg-panel border border-hairline rounded-2xl p-5 mb-6">
+        <div class="flex items-center justify-between mb-3.5 flex-wrap gap-2">
+          <div class="text-xs uppercase tracking-widest text-faint font-600">History <span id="countDisplay" class="text-faint font-400 normal-case">(0 pulls)</span></div>
+          <div class="flex gap-1.5 text-xs" id="filterBtns">
+            <button data-filter="all" class="px-3 py-1.5 rounded-full border border-hairline text-faint">All</button>
+            <button data-filter="green" class="px-3 py-1.5 rounded-full border border-hairline text-faint">Lucky</button>
+            <button data-filter="yellow" class="px-3 py-1.5 rounded-full border border-hairline text-faint">Soft</button>
+            <button data-filter="red" class="px-3 py-1.5 rounded-full border border-hairline text-faint">Hard</button>
+          </div>
+        </div>
+        <div id="historyGrid" class="flex flex-wrap gap-2"></div>
+      </div>
+
+      <!-- Charts -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
+        <div class="bg-panel border border-hairline rounded-2xl p-5">
+          <div class="text-xs uppercase tracking-widest text-faint font-600 mb-3">Frequency by pity value</div>
+          <div class="h-64">
+            <canvas id="freqChart"></canvas>
+          </div>
+        </div>
+        <div class="bg-panel border border-hairline rounded-2xl p-5">
+          <div class="text-xs uppercase tracking-widest text-faint font-600 mb-3">Trend over time</div>
+          <div class="h-64">
+            <canvas id="trendChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <footer class="text-center text-xs text-faint border-t border-hairline pt-5 pb-4">
+    Modeled on Wuthering Waves' Convene system: 80-pull hard pity (50 for Novice Convene), soft pity from ~pull 66, and a 50/50 with guarantee on Character Event Convenes. Prediction uses empirical bootstrap resampling of your own history — not a guarantee.
+  </footer>
+    </div>
+
+    <!-- Settings modal -->
+    <div id="settingsModal" class="hidden fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+      <div class="bg-panel border border-hairline rounded-2xl p-6 w-full max-w-sm max-h-[90vh] overflow-y-auto">
+        <div class="font-display text-lg font-700 mb-4">Banner settings</div>
+        <div class="flex flex-col gap-3.5">
+          <label class="text-xs text-faint font-600">Banner name
+        <input id="setName" type="text" class="mt-1 w-full bg-void border border-hairline rounded-lg px-3 py-2 text-ink outline-none focus:border-brass font-body"/>
+          </label>
+          <label class="text-xs text-faint font-600">Max pity (hard cap)
+        <input id="setMaxPity" type="number" min="1" class="mt-1 w-full bg-void border border-hairline rounded-lg px-3 py-2 text-ink outline-none focus:border-brass font-mono"/>
+          </label>
+          <div class="grid grid-cols-2 gap-3">
+            <label class="text-xs text-faint font-600">Soft pity starts
+          <input id="setYellow" type="number" min="0" class="mt-1 w-full bg-void border border-hairline rounded-lg px-3 py-2 text-ink outline-none focus:border-brass font-mono"/>
+            </label>
+            <label class="text-xs text-faint font-600">Hard pity starts
+          <input id="setRed" type="number" min="0" class="mt-1 w-full bg-void border border-hairline rounded-lg px-3 py-2 text-ink outline-none focus:border-brass font-mono"/>
+            </label>
+          </div>
+          <label class="text-xs text-faint font-600">Astrite per pull
+        <input id="setPullCost" type="number" min="1" class="mt-1 w-full bg-void border border-hairline rounded-lg px-3 py-2 text-ink outline-none focus:border-brass font-mono"/>
+          </label>
+          <label class="flex items-center gap-2 text-xs text-faint font-600 cursor-pointer select-none">
+            <input id="setHas5050" type="checkbox" class="accent-brass w-3.5 h-3.5"/>
+        This banner has a 50/50 (Character Event Convene)
+      </label>
+        </div>
+        <div class="flex items-center justify-between mt-6">
+          <button id="deleteBannerBtn" class="text-hard text-sm font-600 hover:brightness-125">Delete banner</button>
+          <div class="flex gap-2">
+            <button id="cancelSettingsBtn" class="px-4 py-2 rounded-full text-sm text-faint hover:text-ink">Cancel</button>
+            <button id="saveSettingsBtn" class="px-4 py-2 rounded-full text-sm bg-brass text-[#241a04] font-700 hover:brightness-110">Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- New banner modal -->
+    <div id="newBannerModal" class="hidden fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+      <div class="bg-panel border border-hairline rounded-2xl p-6 w-full max-w-sm">
+        <div class="font-display text-lg font-700 mb-4">New banner</div>
+        <label class="text-xs text-faint font-600">Name
+      <input id="nbName" type="text" placeholder="e.g. Camellya Rerun" class="mt-1 w-full bg-void border border-hairline rounded-lg px-3 py-2 text-ink outline-none focus:border-brass font-body"/>
+        </label>
+        <label class="text-xs text-faint font-600 block mt-3.5">Convene type
+      <select id="nbType" class="mt-1 w-full bg-void border border-hairline rounded-lg px-3 py-2 text-ink outline-none focus:border-brass font-body">
+            <option value="character">Character Event Convene (80 pity, 50/50)</option>
+            <option value="weapon">Weapon Event Convene (80 pity, no 50/50)</option>
+            <option value="standardChar">Standard Character Convene (80 pity)</option>
+            <option value="standardWeapon">Standard Weapon Convene (80 pity, pick 1)</option>
+            <option value="novice">Novice Convene (50 pity, one-time)</option>
+            <option value="custom">Custom</option>
+          </select>
+        </label>
+        <p class="text-xs text-faint mt-2">Presets fill in pity caps and soft pity — everything's editable later in Banner settings.</p>
+        <div class="flex justify-end gap-2 mt-6">
+          <button id="nbCancelBtn" class="px-4 py-2 rounded-full text-sm text-faint hover:text-ink">Cancel</button>
+          <button id="nbCreateBtn" class="px-4 py-2 rounded-full text-sm bg-lucky text-[#062012] font-700 hover:brightness-110">Create</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 50/50 result modal -->
+    <div id="resultModal" class="hidden fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+      <div class="bg-panel border border-hairline rounded-2xl p-6 w-full max-w-sm text-center">
+        <div class="font-display text-lg font-700 mb-1">Was it the featured Resonator?</div>
+        <p class="text-xs text-faint mb-5">This banner has a 50/50 — losing guarantees the featured unit next time.</p>
+        <div class="flex gap-3 justify-center">
+          <button id="resultWonBtn" class="flex-1 px-4 py-3 rounded-xl bg-lucky text-[#062012] font-700 hover:brightness-110">✅ Featured</button>
+          <button id="resultLostBtn" class="flex-1 px-4 py-3 rounded-xl bg-hard text-[#2a0509] font-700 hover:brightness-110">❌ Standard</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        "use strict";
+
+        const STORAGE_KEY = "pity-ledger-wuwa-state";
+
+        const BANNER_PRESETS = {
+          character: {
+            label: "Character Event Convene",
+            maxPity: 80,
+            yellowFrom: 66,
+            redFrom: 80,
+            has5050: true,
+            pullCost: 160
+          },
+          weapon: {
+            label: "Weapon Event Convene",
+            maxPity: 80,
+            yellowFrom: 66,
+            redFrom: 80,
+            has5050: false,
+            pullCost: 160
+          },
+          standardChar: {
+            label: "Standard Character Convene",
+            maxPity: 80,
+            yellowFrom: 66,
+            redFrom: 80,
+            has5050: false,
+            pullCost: 160
+          },
+          standardWeapon: {
+            label: "Standard Weapon Convene",
+            maxPity: 80,
+            yellowFrom: 66,
+            redFrom: 80,
+            has5050: false,
+            pullCost: 160
+          },
+          novice: {
+            label: "Novice Convene",
+            maxPity: 50,
+            yellowFrom: 40,
+            redFrom: 50,
+            has5050: false,
+            pullCost: 160
+          },
+          custom: {
+            label: "Custom",
+            maxPity: 80,
+            yellowFrom: 60,
+            redFrom: 80,
+            has5050: false,
+            pullCost: 160
+          }
+        };
+
+        const DEFAULT_PULLS = [
+          {
+            value: 71,
+            won: true
+          }, {
+            value: 69,
+            won: false
+          }, {
+            value: 3,
+            won: true
+          }, {
+            value: 73,
+            won: true
+          }, {
+            value: 70,
+            won: false
+          }, {
+            value: 59,
+            won: true
+          }, {
+            value: 32,
+            won: true
+          }, {
+            value: 73,
+            won: false
+          }, {
+            value: 22,
+            won: true
+          }, {
+            value: 9,
+            won: true
+          }, {
+            value: 67,
+            won: true
+          }, {
+            value: 67,
+            won: false
+          }, {
+            value: 73,
+            won: true
+          }, {
+            value: 22,
+            won: true
+          }, {
+            value: 13,
+            won: true
+          }, {
+            value: 9,
+            won: false
+          }, {
+            value: 67,
+            won: true
+          }, {
+            value: 72,
+            won: true
+          }, {
+            value: 35,
+            won: true
+          }, {
+            value: 67,
+            won: false
+          }, {
+            value: 71,
+            won: true
+          }, {
+            value: 70,
+            won: true
+          }, {
+            value: 22,
+            won: false
+          }, {
+            value: 66,
+            won: true
+          }, {
+            value: 9,
+            won: true
+          }, {
+            value: 25,
+            won: true
+          }, {
+            value: 45,
+            won: false
+          }, {
+            value: 44,
+            won: true
+          }, {
+            value: 71,
+            won: true
+          }
+        ];
+
+        function uid() {
+          return Math
+            .random()
+            .toString(36)
+            .slice(2, 9);
+        }
+
+        function defaultState() {
+          const p = BANNER_PRESETS.character;
+          return {
+            activeBannerId: "default",
+            weightRecent: false,
+            banners: [
+              {
+                id: "default",
+                name: "Character Event Convene",
+                type: "character",
+                maxPity: p.maxPity,
+                yellowFrom: p.yellowFrom,
+                redFrom: p.redFrom,
+                has5050: p.has5050,
+                pullCost: p.pullCost,
+                currentPity: 45,
+                guaranteed: false,
+                data: DEFAULT_PULLS.map(d => ({
+                  ...d
+                }))
+              }
+            ]
+          };
+        }
+
+        let state = defaultState();
+        let historyFilter = "all";
+        let freqChart = null,
+          trendChart = null;
+        let saveTimer = null;
+        let pendingAddValue = null;
+
+        // ---------- persistence ----------
+        async function loadState() {
+          try {
+            const res = await window
+              .storage
+              .get(STORAGE_KEY, false);
+            if (res && res.value) {
+              const parsed = JSON.parse(res.value);
+              if (parsed && Array.isArray(parsed.banners) && parsed.banners.length)
+                state = parsed;
+              }
+            } catch (e) {/* no saved state yet */
+          }
+        }
+
+        function persist() {
+          clearTimeout(saveTimer);
+          saveTimer = setTimeout(async () => {
+            try {
+              await window
+                .storage
+                .set(STORAGE_KEY, JSON.stringify(state), false);
+            } catch (e) {
+              console.error("Storage error", e);
+            }
+          }, 250);
+        }
+
+        // ---------- toast ----------
+        function showToast(msg, kind = "info") {
+          const host = document.getElementById("toastHost");
+          const colors = {
+            info: "border-hairline text-ink",
+            good: "border-lucky text-lucky",
+            warn: "border-hard text-hard"
+          };
+          const el = document.createElement("div");
+          el.className = `toast-anim bg-panel2 border ${colors[kind] || colors.info} rounded-xl px-4 py-2.5 text-sm shadow-lg`;
+          el.textContent = msg;
+          host.appendChild(el);
+          setTimeout(() => {
+            el.style.opacity = "0";
+            el.style.transition = "opacity .3s";
+            setTimeout(() => el.remove(), 300);
+          }, 2400);
+        }
+
+        // ---------- helpers ----------
+        function activeBanner() {
+          return state
+            .banners
+            .find(b => b.id === state.activeBannerId) || state
+            .banners[0];
+        }
+        function bandOf(num, banner) {
+          if (num >= banner.redFrom)
+            return "red";
+          if (num >= banner.yellowFrom)
+            return "yellow";
+          return "green";
+        }
+        function bandColorClass(band) {
+          return band === "red"
+            ? "band-red"
+            : band === "yellow"
+              ? "band-yellow"
+              : "band-green";
+        }
+        function chartColor(band) {
+          return band === "red"
+            ? "#ff5d6c"
+            : band === "yellow"
+              ? "#f5b942"
+              : "#34d399";
+        }
+        function mean(arr) {
+          return arr.length
+            ? arr.reduce((a, b) => a + b, 0) / arr.length
+            : 0;
+        }
+        function stdDev(arr, m) {
+          if (arr.length < 2)
+            return 0;
+          return Math.sqrt(arr.reduce((s, x) => s + (x - m) * (x - m), 0) / (arr.length - 1));
+        }
+        function median(sorted) {
+          const n = sorted.length;
+          if (!n)
+            return 0;
+          const mid = Math.floor(n / 2);
+          return n % 2
+            ? sorted[mid]
+            : (sorted[mid - 1] + sorted[mid]) / 2;
+        }
+        function isGuaranteed(banner) {
+          return !!(banner.has5050 && banner.guaranteed);
+        }
+
+        function toggleGuaranteed() {
+          const b = activeBanner();
+          if (!b.has5050)
+            return;
+          b.guaranteed = !b.guaranteed;
+          persist();
+          renderLiveTracker();
+          showToast(
+            b.guaranteed
+            ? "Marked as guaranteed — next 5★ is featured."
+            : "Guarantee cleared.",
+          b.guaranteed
+            ? "good"
+            : "info");
+        }
+
+        // ---------- render: banner tabs ----------
+        function renderTabs() {
+          const wrap = document.getElementById("bannerTabs");
+          wrap.innerHTML = "";
+          state
+            .banners
+            .forEach(b => {
+              const btn = document.createElement("button");
+              const isActive = b.id === state.activeBannerId;
+              btn.className = "px-4 py-2 rounded-full text-sm font-600 border whitespace-nowrap transition " + (
+                isActive
+                ? "tab-active"
+                : "border-hairline text-faint hover:text-ink hover:border-brassdim bg-panel");
+              btn.textContent = b.name;
+              btn.addEventListener("click", () => {
+                state.activeBannerId = b.id;
+                persist();
+                renderAll();
+              });
+              wrap.appendChild(btn);
+            });
+          const addBtn = document.createElement("button");
+          addBtn.className = "px-4 py-2 rounded-full text-sm font-600 border border-dashed border-hairline text-faint hover:text-brass hover:border-brass transition whitespace-nowrap";
+          addBtn.textContent = "+ New banner";
+          addBtn.addEventListener("click", openNewBannerModal);
+          wrap.appendChild(addBtn);
+        }
+
+        // ---------- render: live tracker ----------
+        function renderLiveTracker() {
+          const b = activeBanner();
+          const cur = Math.max(0, Math.min(b.currentPity || 0, b.maxPity));
+          document
+            .getElementById("currentPityNum")
+            .textContent = cur;
+          document
+            .getElementById("currentPityMax")
+            .textContent = b.maxPity;
+          document
+            .getElementById("maxLabel")
+            .textContent = b.maxPity;
+          document
+            .getElementById("syncPityInput")
+            .placeholder = String(cur);
+
+          const pct = (cur / b.maxPity) * 100;
+          const bar = document.getElementById("pityProgressBar");
+          bar.style.width = pct + "%";
+
+          const softPct = (b.yellowFrom / b.maxPity) * 100;
+          const marker = document.getElementById("softMarker");
+          marker.style.left = softPct + "%";
+          document
+            .getElementById("softMarkerLabel")
+            .textContent = `soft pity (${b.yellowFrom})`;
+
+          const guaranteed = isGuaranteed(b);
+          const badge = document.getElementById("guaranteeBadge");
+          if (b.has5050) {
+            badge
+              .classList
+              .remove("hidden");
+            if (guaranteed) {
+              badge.textContent = "🔒 Guaranteed — next 5★ is featured";
+              badge.className = "text-xs font-700 px-3 py-1 rounded-full transition cursor-pointer bg-luckydim text-lucky border border-lucky/40 hover:brightness-110";
+            } else {
+              badge.textContent = "🎲 50/50 active — tap if you're guaranteed";
+              badge.className = "text-xs font-700 px-3 py-1 rounded-full transition cursor-pointer bg-softdim text-soft border border-soft/40 hover:brightness-110";
+            }
+          } else {
+            badge
+              .classList
+              .add("hidden");
+          }
+
+          const pullsLeft = b.maxPity - cur;
+          document
+            .getElementById("pullsToGuarantee")
+            .textContent = pullsLeft;
+          document
+            .getElementById("astriteToGuarantee")
+            .textContent = (pullsLeft * b.pullCost).toLocaleString() + " Astrite";
+        }
+
+        // ---------- render: history ----------
+        function renderHistory() {
+          const banner = activeBanner();
+          const grid = document.getElementById("historyGrid");
+          grid.innerHTML = "";
+          const count = document.getElementById("countDisplay");
+
+          let items = banner
+            .data
+            .map((entry, idx) => ({
+              ...entry,
+              idx
+            }));
+          if (historyFilter !== "all")
+            items = items.filter(it => bandOf(it.value, banner) === historyFilter);
+
+          count.textContent = `(${banner.data.length} pulls)`;
+
+          if (!items.length) {
+            const empty = document.createElement("div");
+            empty.className = "text-faint text-sm py-6 w-full text-center";
+            empty.textContent = banner.data.length
+              ? "No pulls match this filter."
+              : "No pulls logged yet.";
+            grid.appendChild(empty);
+            return;
+          }
+
+          items.forEach(({value, won, idx}) => {
+            const band = bandOf(value, banner);
+            const wrap = document.createElement("div");
+            wrap.className = "chip-pop flex items-center gap-1 bg-panel2 border border-hairline rounded-full pl-1 pr-1.5 py-1 hover:border-brassdim transition";
+
+            const chip = document.createElement("span");
+            chip.className = `relative w-10 h-10 rounded-full flex items-center justify-center font-700 font-mono text-sm ${bandColorClass(band)}`;
+            chip.textContent = value;
+            if (banner.has5050 && won !== null && won !== undefined) {
+              const pip = document.createElement("span");
+              pip.className = "win-pip absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full text-[8px] flex items-center justify-center " + (
+                won
+                ? "bg-lucky text-[#062012]"
+                : "bg-hard text-[#2a0509]");
+              pip.textContent = won
+                ? "★"
+                : "○";
+              pip.title = won
+                ? "Featured"
+                : "Standard (lost 50/50)";
+              chip.appendChild(pip);
+            }
+            wrap.appendChild(chip);
+
+            const editBtn = document.createElement("button");
+            editBtn.className = "text-faint hover:text-soft text-xs px-1.5 py-1 rounded-full transition";
+            editBtn.textContent = "✎";
+            editBtn.title = "Edit";
+            editBtn.addEventListener("click", () => {
+              const val = prompt(`Edit pity value (0–${banner.maxPity}):`, value);
+              if (val === null)
+                return;
+              const parsed = parseInt(val, 10);
+              if (Number.isNaN(parsed) || parsed < 0 || parsed > banner.maxPity) {
+                showToast(`Enter a number between 0 and ${banner.maxPity}.`, "warn");
+                return;
+              }
+              banner
+                .data[idx]
+                .value = parsed;
+              if (banner.has5050) {
+                const won = confirm("Was this the featured Resonator? OK = yes, Cancel = no.");
+                banner
+                  .data[idx]
+                  .won = won;
+                if (idx === 0)
+                  banner.guaranteed = (won === false);
+                }
+              persist();
+              renderAll();
+            });
+            wrap.appendChild(editBtn);
+
+            const delBtn = document.createElement("button");
+            delBtn.className = "text-faint hover:text-hard text-xs px-1.5 py-1 rounded-full transition";
+            delBtn.textContent = "✕";
+            delBtn.title = "Delete";
+            delBtn.addEventListener("click", () => {
+              if (!confirm(`Delete pity ${value}?`))
+                return;
+              banner
+                .data
+                .splice(idx, 1);
+              persist();
+              renderAll();
+              showToast("Pull deleted.");
+            });
+            wrap.appendChild(delBtn);
+
+            grid.appendChild(wrap);
+          });
+        }
+
+        // ---------- render: stats ----------
+        function statCard(label, value) {
+          const div = document.createElement("div");
+          div.className = "bg-panel border border-hairline rounded-xl px-3.5 py-3 text-center";
+          div.innerHTML = `<div class="text-[10px] uppercase tracking-widest text-faint font-600">${label}</div>
+                      <div class="text-xl font-700 font-mono text-ink mt-0.5">${value}</div>`;
+          return div;
+        }
+
+        function renderStats() {
+          const banner = activeBanner();
+          const values = banner
+            .data
+            .map(d => d.value);
+          const grid = document.getElementById("statsGrid");
+          grid.innerHTML = "";
+
+          if (!values.length) {
+            [
+              "Mean",
+              "Median",
+              "Mode",
+              "Std dev",
+              "Min / Max",
+              "Total"
+            ].forEach(l => grid.appendChild(statCard(l, "—")));
+            return;
+          }
+
+          const sorted = [...values].sort((a, b) => a - b);
+          const m = mean(values);
+          const med = median(sorted);
+          const freqMap = {};
+          values.forEach(v => freqMap[v] = (freqMap[v] || 0) + 1);
+          let mode = values[0],
+            maxFreq = 0;
+          for (const [k, v] of Object.entries(freqMap))
+            if (v > maxFreq) {
+              maxFreq = v;
+              mode = Number(k);
+            }
+          const sd = stdDev(values, m);
+
+          grid.appendChild(statCard("Mean", m.toFixed(1)));
+          grid.appendChild(statCard("Median", med));
+          grid.appendChild(statCard("Mode", mode));
+          grid.appendChild(statCard("Std dev", sd.toFixed(1)));
+          grid.appendChild(statCard("Min / Max", `${sorted[0]}–${sorted[sorted.length - 1]}`));
+          grid.appendChild(statCard("Total", values.length));
+        }
+
+        // ---------- render: probability bars ----------
+        function renderProbBars() {
+          const banner = activeBanner();
+          const values = banner
+            .data
+            .map(d => d.value);
+          const box = document.getElementById("probBars");
+          box.innerHTML = "";
+
+          const bands = [
+            {
+              key: "green",
+              label: "Lucky",
+              range: `< ${banner.yellowFrom}`,
+              cls: "bg-lucky"
+            }, {
+              key: "yellow",
+              label: "Soft pity",
+              range: `${banner.yellowFrom}–${banner.redFrom - 1}`,
+              cls: "bg-soft"
+            }, {
+              key: "red",
+              label: "Hard pity",
+              range: `≥ ${banner.redFrom}`,
+              cls: "bg-hard"
+            }
+          ];
+
+          const n = values.length || 1;
+          bands.forEach(b => {
+            const count = values
+              .filter(v => bandOf(v, banner) === b.key)
+              .length;
+            const pct = values.length
+              ? (count / n * 100)
+              : 0;
+            const row = document.createElement("div");
+            row.innerHTML = `
+        <div class="flex justify-between text-sm mb-1">
+          <span class="text-faint">${b.label} <span class="text-faint/70">(${b.range})</span></span>
+          <span class="font-700 font-mono">${values.length
+              ? pct.toFixed(1) + "%"
+              : "—"}</span>
+        </div>
+        <div class="h-2.5 rounded-full bg-void border border-hairline overflow-hidden">
+          <div class="${b.cls} h-full rounded-full transition-all duration-500" style="width:${pct}%"></div>
+        </div>`;
+            box.appendChild(row);
+          });
+        }
+
+        // ---------- render: luck index ----------
+        function renderLuck() {
+          const banner = activeBanner();
+          const values = banner
+            .data
+            .map(d => d.value);
+          const bar = document.getElementById("luckBar");
+          const label = document.getElementById("luckLabel");
+          const note = document.getElementById("luckNote");
+
+          if (!values.length) {
+            bar.style.width = "50%";
+            bar.style.background = "#6d7891";
+            label.textContent = "—";
+            note.textContent = "Compares your average pity to a uniform baseline for this banner's cap.";
+            return;
+          }
+
+          const baseline = banner.maxPity / 2;
+          const m = mean(values);
+          const luckPct = ((baseline - m) / baseline) * 100;
+          const clamped = Math.max(-100, Math.min(100, luckPct));
+          const pos = ((clamped + 100) / 200) * 100;
+
+          bar.style.width = pos + "%";
+          bar.style.background = luckPct > 8
+            ? "#34d399"
+            : luckPct < -8
+              ? "#ff5d6c"
+              : "#f5b942";
+          label.textContent = (
+            luckPct > 0
+            ? "+"
+            : "") + luckPct.toFixed(0) + "%";
+          note.textContent = `Your average pity is ${m.toFixed(1)} vs a ${baseline.toFixed(0)} baseline for a ${banner.maxPity}-pull cap.`;
+        }
+
+        // ---------- render: insights ----------
+        function renderInsights() {
+          const banner = activeBanner();
+          const grid = document.getElementById("insightsGrid");
+          grid.innerHTML = "";
+          const values = banner
+            .data
+            .map(d => d.value);
+
+          if (!values.length) {
+            ["Hard pity hits", "Longest lucky run", "Avg gap between hard pity", "50/50 win rate"].forEach(l => grid.appendChild(statCard(l, "—")));
+            return;
+          }
+
+          const chrono = [...values].reverse();
+          const hardCount = values
+            .filter(v => bandOf(v, banner) === "red")
+            .length;
+
+          let longestGreenRun = 0,
+            currentRun = 0;
+          chrono.forEach(v => {
+            if (bandOf(v, banner) === "green") {
+              currentRun++;
+              longestGreenRun = Math.max(longestGreenRun, currentRun);
+            } else
+              currentRun = 0;
+            }
+          );
+
+          const hardIdxs = [];
+          chrono.forEach((v, i) => {
+            if (bandOf(v, banner) === "red")
+              hardIdxs.push(i);
+            }
+          );
+          let avgGap = "—";
+          if (hardIdxs.length > 1) {
+            const gaps = [];
+            for (let i = 1; i < hardIdxs.length; i++)
+              gaps.push(hardIdxs[i] - hardIdxs[i - 1]);
+            avgGap = mean(gaps).toFixed(1);
+          }
+
+          let winRateLabel = "—";
+          if (banner.has5050) {
+            const decided = banner
+              .data
+              .filter(d => d.won === true || d.won === false);
+            if (decided.length) {
+              const wins = decided
+                .filter(d => d.won === true)
+                .length;
+              winRateLabel = `${ (wins / decided.length * 100).toFixed(0)}%`;
+            }
+          } else {
+            winRateLabel = "n/a";
+          }
+
+          grid.appendChild(statCard("Hard pity hits", `${hardCount} / ${values.length}`));
+          grid.appendChild(statCard("Longest lucky run", longestGreenRun));
+          grid.appendChild(statCard("Avg gap btwn hard", avgGap));
+          grid.appendChild(statCard("50/50 win rate", winRateLabel));
+        }
+
+        // ---------- prediction ----------
+        function samplePrediction(banner) {
+          const values = banner
+            .data
+            .map(d => d.value);
+          if (!values.length)
+            return null;
+
+          const weighted = state.weightRecent;
+          const decay = 0.94;
+
+          const weightMap = {};
+          let totalWeight = 0;
+          values.forEach((v, idx) => {
+            const w = weighted
+              ? Math.pow(decay, idx)
+              : 1;
+            weightMap[v] = (weightMap[v] || 0) + w;
+            totalWeight += w;
+          });
+
+          const vals = Object
+            .keys(weightMap)
+            .map(Number)
+            .sort((a, b) => a - b);
+          const cumProbs = [];
+          let cum = 0;
+          vals.forEach(v => {
+            cum += weightMap[v] / totalWeight;
+            cumProbs.push({value: v, cumProb: cum});
+          });
+
+          function sampleOne() {
+            const r = Math.random();
+            for (const item of cumProbs)
+              if (r <= item.cumProb)
+                return item.value;
+          return vals[vals.length - 1];
+          }
+
+          const SIM = 10000;
+          const freq = {};
+          for (let i = 0; i < SIM; i++) {
+            const s = sampleOne();
+            freq[s] = (freq[s] || 0) + 1;
+          }
+          let best = vals[0],
+            bestCount = 0;
+          for (const [k, v] of Object.entries(freq))
+            if (v > bestCount) {
+              bestCount = v;
+              best = Number(k);
+            }
+
+          return {
+            value: best,
+            confidence: (bestCount / SIM) * 100,
+            sampleOne
+          };
+        }
+
+        function renderPrediction() {
+          const banner = activeBanner();
+          const pred = samplePrediction(banner);
+          const digits = document.getElementById("reelDigits");
+          const conf = document.getElementById("predConfidence");
+          const bandLine = document.getElementById("predBand");
+
+          if (!pred) {
+            digits.textContent = "--";
+            conf.textContent = "—";
+            bandLine.textContent = "Log a pull to unlock predictions";
+            return;
+          }
+
+          digits.textContent = String(pred.value).padStart(2, "0");
+          digits.className = "led text-4xl";
+          digits.style.color = chartColor(bandOf(pred.value, banner));
+          conf.textContent = `${pred
+            .value} · ${pred
+            .confidence
+            .toFixed(1)}% likely`;
+          bandLine.textContent = state.weightRecent
+            ? "recency-weighted bootstrap · 10,000 draws"
+            : "bootstrap · 10,000 draws";
+        }
+
+        function runSimulation() {
+          const banner = activeBanner();
+          if (!banner.data.length) {
+            showToast("Add some pulls first.", "warn");
+            return;
+          }
+          const pred = samplePrediction(banner);
+          const reel = document.getElementById("reel");
+          const digits = document.getElementById("reelDigits");
+          reel
+            .classList
+            .add("reel-spin");
+
+          let ticks = 0;
+          const spinner = setInterval(() => {
+            digits.textContent = String(Math.floor(Math.random() * (banner.maxPity + 1))).padStart(2, "0");
+            ticks++;
+            if (ticks > 10) {
+              clearInterval(spinner);
+              reel
+                .classList
+                .remove("reel-spin");
+              const result = pred.sampleOne();
+              digits.textContent = String(result).padStart(2, "0");
+              digits.style.color = chartColor(bandOf(result, banner));
+              showToast(`Simulated pull: ${result}`, "good");
+            }
+          }, 55);
+        }
+
+        // ---------- charts ----------
+        function renderFreqChart() {
+          const banner = activeBanner();
+          const values = banner
+            .data
+            .map(d => d.value);
+          const ctx = document
+            .getElementById("freqChart")
+            .getContext("2d");
+          if (freqChart) {
+            freqChart.destroy();
+            freqChart = null;
+          }
+
+          const freqMap = {};
+          values.forEach(v => freqMap[v] = (freqMap[v] || 0) + 1);
+          const vals = Object
+            .keys(freqMap)
+            .map(Number)
+            .sort((a, b) => a - b);
+
+          freqChart = new Chart(ctx, {
+            type: "bar",
+            data: {
+              labels: vals.map(String),
+              datasets: [
+                {
+                  data: vals.map(v => freqMap[v]),
+                  backgroundColor: vals.map(v => chartColor(bandOf(v, banner)) + "cc"),
+                  borderColor: vals.map(v => chartColor(bandOf(v, banner))),
+                  borderWidth: 1.5,
+                  borderRadius: 5,
+                  barPercentage: 0.75
+                }
+              ]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: {
+                  display: false
+                },
+                tooltip: {
+                  callbacks: {
+                    label: (c) => `${c.raw} pull${c.raw > 1
+                      ? "s"
+                      : ""}`
+                  }
+                }
+              },
+              scales: {
+                x: {
+                  grid: {
+                    color: "rgba(255,255,255,0.04)"
+                  },
+                  ticks: {
+                    color: "#6d7891",
+                    font: {
+                      size: 10
+                    }
+                  }
+                },
+                y: {
+                  beginAtZero: true,
+                  grid: {
+                    color: "rgba(255,255,255,0.06)"
+                  },
+                  ticks: {
+                    color: "#6d7891",
+                    stepSize: 1
+                  }
+                }
+              }
+            }
+          });
+        }
+
+        function renderTrendChart() {
+          const banner = activeBanner();
+          const chrono = [...banner.data]
+            .reverse()
+            .map(d => d.value);
+          const ctx = document
+            .getElementById("trendChart")
+            .getContext("2d");
+          if (trendChart) {
+            trendChart.destroy();
+            trendChart = null;
+          }
+
+          trendChart = new Chart(ctx, {
+            type: "line",
+            data: {
+              labels: chrono.map((_, i) => i + 1),
+              datasets: [
+                {
+                  data: chrono,
+                  borderColor: "#d9ac4f",
+                  backgroundColor: "rgba(217,172,79,0.12)",
+                  pointBackgroundColor: chrono.map(v => chartColor(bandOf(v, banner))),
+                  pointBorderColor: chrono.map(v => chartColor(bandOf(v, banner))),
+                  pointRadius: 4,
+                  tension: 0.25,
+                  fill: true,
+                  borderWidth: 2
+                }
+              ]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: {
+                  display: false
+                }
+              },
+              scales: {
+                x: {
+                  title: {
+                    display: true,
+                    text: "Pull #",
+                    color: "#6d7891"
+                  },
+                  grid: {
+                    color: "rgba(255,255,255,0.04)"
+                  },
+                  ticks: {
+                    color: "#6d7891",
+                    font: {
+                      size: 10
+                    }
+                  }
+                },
+                y: {
+                  title: {
+                    display: true,
+                    text: "Pity",
+                    color: "#6d7891"
+                  },
+                  grid: {
+                    color: "rgba(255,255,255,0.06)"
+                  },
+                  ticks: {
+                    color: "#6d7891"
+                  }
+                }
+              }
+            }
+          });
+        }
+
+        // ---------- settings summary + modal ----------
+        function renderThresholdSummary() {
+          const b = activeBanner();
+          document
+            .getElementById("thresholdSummary")
+            .textContent = `${b
+            .name} · cap ${b
+            .maxPity} · soft ${b
+            .yellowFrom} · hard ${b
+            .redFrom}${b
+            .has5050
+              ? " · 50/50"
+              : ""}`;
+        }
+
+        function openSettingsModal() {
+          const b = activeBanner();
+          document
+            .getElementById("setName")
+            .value = b.name;
+          document
+            .getElementById("setMaxPity")
+            .value = b.maxPity;
+          document
+            .getElementById("setYellow")
+            .value = b.yellowFrom;
+          document
+            .getElementById("setRed")
+            .value = b.redFrom;
+          document
+            .getElementById("setPullCost")
+            .value = b.pullCost;
+          document
+            .getElementById("setHas5050")
+            .checked = !!b.has5050;
+          document
+            .getElementById("settingsModal")
+            .classList
+            .remove("hidden");
+        }
+        function closeSettingsModal() {
+          document
+            .getElementById("settingsModal")
+            .classList
+            .add("hidden");
+        }
+
+        function saveSettings() {
+          const b = activeBanner();
+          const name = document
+            .getElementById("setName")
+            .value
+            .trim() || b.name;
+          const maxPity = parseInt(document.getElementById("setMaxPity").value, 10);
+          const yellowFrom = parseInt(document.getElementById("setYellow").value, 10);
+          const redFrom = parseInt(document.getElementById("setRed").value, 10);
+          const pullCost = parseInt(document.getElementById("setPullCost").value, 10);
+          const has5050 = document
+            .getElementById("setHas5050")
+            .checked;
+
+          if ([maxPity, yellowFrom, redFrom, pullCost].some(n => Number.isNaN(n) || n < 0)) {
+            showToast("Enter valid non-negative numbers.", "warn");
+            return;
+          }
+          if (!(yellowFrom <= redFrom && redFrom <= maxPity)) {
+            showToast("Thresholds must satisfy soft ≤ hard ≤ cap.", "warn");
+            return;
+          }
+
+          b.name = name;
+          b.maxPity = maxPity;
+          b.yellowFrom = yellowFrom;
+          b.redFrom = redFrom;
+          b.pullCost = pullCost;
+          b.has5050 = has5050;
+          b.currentPity = Math.min(b.currentPity || 0, maxPity);
+          persist();
+          closeSettingsModal();
+          renderAll();
+          showToast("Banner settings saved.", "good");
+        }
+
+        function deleteBanner() {
+          if (state.banners.length <= 1) {
+            showToast("You need at least one banner.", "warn");
+            return;
+          }
+          const b = activeBanner();
+          if (!confirm(`Delete banner "${b.name}" and all its history?`))
+            return;
+          state.banners = state
+            .banners
+            .filter(x => x.id !== b.id);
+          state.activeBannerId = state
+            .banners[0]
+            .id;
+          persist();
+          closeSettingsModal();
+          renderAll();
+          showToast("Banner deleted.");
+        }
+
+        // ---------- new banner modal ----------
+        function openNewBannerModal() {
+          document
+            .getElementById("nbName")
+            .value = "";
+          document
+            .getElementById("nbType")
+            .value = "character";
+          document
+            .getElementById("newBannerModal")
+            .classList
+            .remove("hidden");
+        }
+        function closeNewBannerModal() {
+          document
+            .getElementById("newBannerModal")
+            .classList
+            .add("hidden");
+        }
+
+        function createBanner() {
+          const name = document
+            .getElementById("nbName")
+            .value
+            .trim();
+          const type = document
+            .getElementById("nbType")
+            .value;
+          if (!name) {
+            showToast("Give the banner a name.", "warn");
+            return;
+          }
+          const preset = BANNER_PRESETS[type] || BANNER_PRESETS.custom;
+          const nb = {
+            id: uid(),
+            name,
+            type,
+            maxPity: preset.maxPity,
+            yellowFrom: preset.yellowFrom,
+            redFrom: preset.redFrom,
+            has5050: preset.has5050,
+            pullCost: preset.pullCost,
+            currentPity: 0,
+            guaranteed: false,
+            data: []
+          };
+          state
+            .banners
+            .push(nb);
+          state.activeBannerId = nb.id;
+          persist();
+          closeNewBannerModal();
+          renderAll();
+          showToast(`Created "${name}".`, "good");
+        }
+
+        // ---------- add pull ----------
+        function finalizeAdd(banner, value, won) {
+          banner
+            .data
+            .unshift({
+              value,
+              won: banner.has5050
+                ? won
+                : null
+            });
+          banner.currentPity = 0;
+          if (banner.has5050)
+            banner.guaranteed = (won === false);
+          persist();
+          renderAll();
+          showToast("Pull logged.", "good");
+        }
+
+        function addPull() {
+          const input = document.getElementById("newPity");
+          const banner = activeBanner();
+          const val = parseInt(input.value, 10);
+          if (Number.isNaN(val) || val < 0 || val > banner.maxPity) {
+            showToast(`Enter a number between 0 and ${banner.maxPity}.`, "warn");
+            return;
+          }
+          input.value = "";
+
+          if (banner.has5050) {
+            if (isGuaranteed(banner)) {
+              finalizeAdd(banner, val, true);
+              showToast("Guarantee used — featured Resonator secured!", "good");
+            } else {
+              pendingAddValue = val;
+              document
+                .getElementById("resultModal")
+                .classList
+                .remove("hidden");
+            }
+          } else {
+            finalizeAdd(banner, val, null);
+          }
+        }
+
+        function resolveResult(won) {
+          document
+            .getElementById("resultModal")
+            .classList
+            .add("hidden");
+          if (pendingAddValue === null)
+            return;
+          finalizeAdd(activeBanner(), pendingAddValue, won);
+          pendingAddValue = null;
+        }
+
+        // ---------- live counter controls ----------
+        function adjustPity(delta) {
+          const b = activeBanner();
+          b.currentPity = Math.max(0, Math.min(b.maxPity, (b.currentPity || 0) + delta));
+          persist();
+          renderLiveTracker();
+        }
+
+        function syncPity() {
+          const b = activeBanner();
+          const input = document.getElementById("syncPityInput");
+          const val = parseInt(input.value, 10);
+          if (Number.isNaN(val) || val < 0 || val > b.maxPity) {
+            showToast(`Enter a number between 0 and ${b.maxPity}.`, "warn");
+            return;
+          }
+          b.currentPity = val;
+          input.value = "";
+          persist();
+          renderLiveTracker();
+          showToast("Counter synced.", "good");
+        }
+
+        function logFiveStarFromCounter() {
+          const b = activeBanner();
+          const value = Math.max(1, Math.min(b.maxPity, b.currentPity || 0));
+          document
+            .getElementById("newPity")
+            .value = value;
+          addPull();
+        }
+
+        // ---------- export / import ----------
+        function exportData() {
+          const blob = new Blob([JSON.stringify(state, null, 2)], {type: "application/json"});
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "pity-ledger-export.json";
+          a.click();
+          URL.revokeObjectURL(url);
+          showToast("Exported JSON.", "good");
+        }
+
+        function importData(file) {
+          const reader = new FileReader();
+          reader.onload = () => {
+            try {
+              const parsed = JSON.parse(reader.result);
+              if (!parsed || !Array.isArray(parsed.banners) || !parsed.banners.length)
+                throw new Error("bad shape");
+              state = parsed;
+              if (!state.banners.find(b => b.id === state.activeBannerId))
+                state.activeBannerId = state
+                  .banners[0]
+                  .id;
+              persist();
+              renderAll();
+              showToast("Import successful.", "good");
+            } catch (e) {
+              showToast("That file doesn't look like a Pity Ledger export.", "warn");
+            }
+          };
+          reader.readAsText(file);
+        }
+
+        // ---------- filters ----------
+        function renderFilterButtons() {
+          document
+            .querySelectorAll("#filterBtns button")
+            .forEach(btn => {
+              const isActive = btn.dataset.filter === historyFilter;
+              btn.className = "px-3 py-1.5 rounded-full border text-xs transition " + (
+                isActive
+                ? "border-brass text-brassglow bg-panel3"
+                : "border-hairline text-faint hover:text-ink");
+            });
+        }
+
+        // ---------- master render ----------
+        function renderAll() {
+          renderTabs();
+          renderThresholdSummary();
+          renderLiveTracker();
+          renderStats();
+          renderProbBars();
+          renderLuck();
+          renderInsights();
+          renderPrediction();
+          renderHistory();
+          renderFilterButtons();
+          renderFreqChart();
+          renderTrendChart();
+        }
+
+        // ---------- events ----------
+        document
+          .getElementById("addBtn")
+          .addEventListener("click", addPull);
+        document
+          .getElementById("newPity")
+          .addEventListener("keydown", e => {
+            if (e.key === "Enter")
+              addPull();
+            }
+          );
+        document
+          .getElementById("simulateBtn")
+          .addEventListener("click", runSimulation);
+        document
+          .getElementById("weightToggle")
+          .addEventListener("change", e => {
+            state.weightRecent = e.target.checked;
+            persist();
+            renderPrediction();
+          });
+        document
+          .getElementById("settingsBtn")
+          .addEventListener("click", openSettingsModal);
+        document
+          .getElementById("cancelSettingsBtn")
+          .addEventListener("click", closeSettingsModal);
+        document
+          .getElementById("saveSettingsBtn")
+          .addEventListener("click", saveSettings);
+        document
+          .getElementById("deleteBannerBtn")
+          .addEventListener("click", deleteBanner);
+        document
+          .getElementById("nbCancelBtn")
+          .addEventListener("click", closeNewBannerModal);
+        document
+          .getElementById("nbCreateBtn")
+          .addEventListener("click", createBanner);
+        document
+          .getElementById("exportBtn")
+          .addEventListener("click", exportData);
+        document
+          .getElementById("importInput")
+          .addEventListener("change", e => {
+            if (e.target.files && e.target.files[0])
+              importData(e.target.files[0]);
+            e.target.value = "";
+          });
+        document
+          .getElementById("filterBtns")
+          .addEventListener("click", e => {
+            const btn = e
+              .target
+              .closest("button[data-filter]");
+            if (!btn)
+              return;
+            historyFilter = btn.dataset.filter;
+            renderHistory();
+            renderFilterButtons();
+          });
+        document
+          .getElementById("minusPullBtn")
+          .addEventListener("click", () => adjustPity(-1));
+        document
+          .getElementById("plusPullBtn")
+          .addEventListener("click", () => adjustPity(1));
+        document
+          .getElementById("logFiveStarBtn")
+          .addEventListener("click", logFiveStarFromCounter);
+        document
+          .getElementById("guaranteeBadge")
+          .addEventListener("click", toggleGuaranteed);
+        document
+          .getElementById("syncPityBtn")
+          .addEventListener("click", syncPity);
+        document
+          .getElementById("syncPityInput")
+          .addEventListener("keydown", e => {
+            if (e.key === "Enter")
+              syncPity();
+            }
+          );
+        document
+          .getElementById("resultWonBtn")
+          .addEventListener("click", () => resolveResult(true));
+        document
+          .getElementById("resultLostBtn")
+          .addEventListener("click", () => resolveResult(false));
+
+        [document.getElementById("settingsModal"), document.getElementById("newBannerModal"), document.getElementById("resultModal")].forEach(modal => {
+          modal.addEventListener("click", e => {
+            if (e.target === modal)
+              modal
+                .classList
+                .add("hidden");
+            }
+          );
+        });
+
+        window.addEventListener("resize", () => {
+          if (freqChart)
+            freqChart.resize();
+          if (trendChart)
+            trendChart.resize();
+          }
+        );
+
+        // ---------- init ----------
+        (async function init() {
+          await loadState();
+          document
+            .getElementById("weightToggle")
+            .checked = !!state.weightRecent;
+          renderAll();
+        })();
+      })();
+    </script>
+  </body>
+</html>
