@@ -11,8 +11,10 @@ export interface Prediction {
 // Empirical bootstrap over a banner's own history.
 // weightRecent applies geometric decay (recent pulls count more).
 export function samplePrediction(banner: Banner, weightRecent: boolean): Prediction | null {
-  const values = banner.data.map(d => d.value)
+  // 5★ pity values only (stream also holds 3★/4★ records now)
+  const values = banner.data.filter(d => (d.rarity ?? 5) === 5).map(d => d.value)
   if (!values.length) return null
+
 
   const decay = 0.94
   const weightMap: Record<number, number> = {}

@@ -21,7 +21,10 @@ const props = defineProps<{ banner: Banner }>()
 const gridColor = 'rgba(255,255,255,0.05)'
 const tickColor = '#6d7891'
 
-const hasData = computed(() => props.banner.data.length > 0)
+// 5★ pity records only (stream also holds 3★/4★ now)
+const five = computed(() => props.banner.data.filter(d => (d.rarity ?? 5) === 5))
+const hasData = computed(() => five.value.length > 0)
+
 
 // histogram binned into 5-pull buckets
 const histogram = computed(() => {
@@ -29,7 +32,8 @@ const histogram = computed(() => {
   const binSize = 5
   const binCount = Math.ceil(b.maxPity / binSize)
   const counts = new Array(binCount).fill(0)
-  b.data.forEach(d => {
+  five.value.forEach(d => {
+
     const idx = Math.min(binCount - 1, Math.floor((d.value - 1) / binSize))
     counts[idx]++
   })
@@ -44,7 +48,8 @@ const histogram = computed(() => {
 // chronological pity over time
 const timeline = computed(() => {
   const b = props.banner
-  const chrono = [...b.data].reverse()
+  const chrono = [...five.value].reverse()
+
   return {
     labels: chrono.map((_, i) => `#${i + 1}`),
     datasets: [

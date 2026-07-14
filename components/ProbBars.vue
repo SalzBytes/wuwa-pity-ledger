@@ -7,7 +7,8 @@ const props = defineProps<{ banner: Banner }>()
 
 const rows = computed(() => {
   const b = props.banner
-  const values = b.data.map(d => d.value)
+  const values = b.data.filter(d => (d.rarity ?? 5) === 5).map(d => d.value)
+
   const n = values.length || 1
   const defs = [
     { key: 'green', label: 'Lucky', range: `< ${b.yellowFrom}`, cls: 'bg-lucky' },

@@ -35,6 +35,15 @@ const fileInput = ref<HTMLInputElement | null>(null)
 const guaranteed = computed(() => isGuaranteed(activeBanner.value))
 const canDelete = computed(() => state.banners.length > 1)
 
+const sections = [
+  { id: 'live', label: 'Live tracker' },
+  { id: 'predict', label: 'Prediction' },
+  { id: 'odds', label: '5★ / 4★ odds' },
+  { id: 'stats', label: 'Stats & charts' },
+  { id: 'history', label: 'History' }
+]
+
+
 function onLogFiveStar() {
   const b = activeBanner.value
   const val = Math.max(1, Math.min(b.maxPity, b.currentPity || 1))
@@ -153,42 +162,52 @@ async function onFile(e: Event) {
         {{ activeBanner.name }} · cap {{ activeBanner.maxPity }} · soft {{ activeBanner.yellowFrom }} · hard {{ activeBanner.redFrom }}<span v-if="activeBanner.has5050"> · 50/50</span>
       </p>
 
-      <LiveTracker
-        :banner="activeBanner"
-        :guaranteed="guaranteed"
-        @adjust="adjustPity"
-        @sync="syncPity"
-        @log-five-star="onLogFiveStar"
-        @toggle-guarantee="onToggleGuarantee"
-      />
+      <SectionNav :sections="sections" />
 
-      <ReelPrediction
-        :banner="activeBanner"
-        :weight-recent="state.weightRecent"
-        @update:weight-recent="setWeightRecent"
-      />
+      <section id="live" class="scroll-mt-28">
+        <LiveTracker
+          :banner="activeBanner"
+          :guaranteed="guaranteed"
+          @adjust="adjustPity"
+          @sync="syncPity"
+          @log-five-star="onLogFiveStar"
+          @toggle-guarantee="onToggleGuarantee"
+        />
+      </section>
 
-      <PredictTable :banner="activeBanner" :weight-recent="state.weightRecent" />
+      <section id="predict" class="scroll-mt-28">
+        <ReelPrediction
+          :banner="activeBanner"
+          :weight-recent="state.weightRecent"
+          @update:weight-recent="setWeightRecent"
+        />
+        <PredictTable :banner="activeBanner" :weight-recent="state.weightRecent" />
+      </section>
 
+      <section id="odds" class="scroll-mt-28">
+        <FiveStarOdds :banner="activeBanner" />
+        <FourStarOdds />
+      </section>
 
-      <StatsGrid :banner="activeBanner" />
+      <section id="stats" class="scroll-mt-28">
+        <StatsGrid :banner="activeBanner" />
+        <div class="grid lg:grid-cols-2 gap-4 mb-6">
+          <ProbBars :banner="activeBanner" />
+          <LuckIndex :banner="activeBanner" />
+        </div>
+        <InsightsGrid :banner="activeBanner" />
+        <Charts :banner="activeBanner" />
+      </section>
 
-      <div class="grid lg:grid-cols-2 gap-4 mb-6">
-        <ProbBars :banner="activeBanner" />
-        <LuckIndex :banner="activeBanner" />
-      </div>
+      <section id="history" class="scroll-mt-28">
+        <ManualLog :banner="activeBanner" @add="onManualAdd" />
+        <HistoryGrid
+          :banner="activeBanner"
+          @edit="editIndex = $event"
+          @delete="onEditRemove"
+        />
+      </section>
 
-      <InsightsGrid :banner="activeBanner" />
-
-      <Charts :banner="activeBanner" />
-
-      <ManualLog :banner="activeBanner" @add="onManualAdd" />
-
-      <HistoryGrid
-        :banner="activeBanner"
-        @edit="editIndex = $event"
-        @delete="onEditRemove"
-      />
 
       <footer class="text-center text-xs text-faint mt-10 pb-4">
         Everything is stored locally in your browser. Not affiliated with Kuro Games.

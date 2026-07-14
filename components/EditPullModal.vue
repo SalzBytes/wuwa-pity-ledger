@@ -12,7 +12,10 @@ const emit = defineEmits<{
 }>()
 const { showToast } = useToast()
 
-const pull = props.banner.data[props.index]
+// `index` is the 5★-only position (HistoryGrid/useLedger address 5★ that way),
+// so resolve it against the 5★ subset of the unified stream.
+const pull = props.banner.data.filter(d => (d.rarity ?? 5) === 5)[props.index]
+
 const val = ref<number | null>(pull ? pull.value : null)
 const won = ref<boolean | null>(pull ? pull.won : true)
 

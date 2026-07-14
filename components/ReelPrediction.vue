@@ -10,7 +10,17 @@ const props = defineProps<{ banner: Banner; weightRecent: boolean }>()
 const emit = defineEmits<{ 'update:weightRecent': [v: boolean] }>()
 const { showToast } = useToast()
 
-const pred = computed(() => samplePrediction(props.banner, props.weightRecent))
+// re-run on any 5★ add/edit/delete only (3★/4★ share the stream but don't feed
+// the 5★ model — excluding them keeps the 10k-draw sim off the tap path)
+const dataSig = computed(() =>
+  props.banner.data.filter(d => (d.rarity ?? 5) === 5).map(d => d.value).join(',')
+)
+
+const pred = computed(() => {
+  void dataSig.value
+  return samplePrediction(props.banner, props.weightRecent)
+})
+
 
 const digits = ref('--')
 const digitColor = ref('#f2c869')

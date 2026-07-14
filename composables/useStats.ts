@@ -1,6 +1,10 @@
 import type { Banner } from '~/utils/types'
 import { bandOf } from '~/utils/bands'
 
+// 5★ pity values only — the stream also holds 3★/4★ records now.
+const fiveValues = (b: Banner) => b.data.filter(d => (d.rarity ?? 5) === 5).map(d => d.value)
+
+
 export function mean(arr: number[]): number {
   return arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0
 }
@@ -28,7 +32,8 @@ export interface Stats {
 }
 
 export function computeStats(banner: Banner): Stats | null {
-  const values = banner.data.map(d => d.value)
+  const values = fiveValues(banner)
+
   if (!values.length) return null
   const sorted = [...values].sort((a, b) => a - b)
   const m = mean(values)
@@ -62,7 +67,8 @@ export interface Insights {
 }
 
 export function computeInsights(banner: Banner): Insights | null {
-  const values = banner.data.map(d => d.value)
+  const values = fiveValues(banner)
+
   if (!values.length) return null
   const chrono = [...values].reverse()
   const hardCount = values.filter(v => bandOf(v, banner) === 'red').length
@@ -89,7 +95,8 @@ export function computeInsights(banner: Banner): Insights | null {
 
   let winRate = 'n/a'
   if (banner.has5050) {
-    const decided = banner.data.filter(d => d.won === true || d.won === false)
+    const decided = banner.data.filter(d => (d.rarity ?? 5) === 5 && (d.won === true || d.won === false))
+
     winRate = decided.length
       ? `${((decided.filter(d => d.won === true).length / decided.length) * 100).toFixed(0)}%`
       : '—'
@@ -100,7 +107,8 @@ export function computeInsights(banner: Banner): Insights | null {
 
 // avg pity vs maxPity/2 baseline → luck % (positive = lucky)
 export function computeLuck(banner: Banner): { pct: number; avg: number; baseline: number } | null {
-  const values = banner.data.map(d => d.value)
+  const values = fiveValues(banner)
+
   if (!values.length) return null
   const baseline = banner.maxPity / 2
   const m = mean(values)

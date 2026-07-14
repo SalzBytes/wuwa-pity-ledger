@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import type { Banner } from '~/utils/types'
+import { useFourStar } from '~/composables/useFourStar'
 
 const props = defineProps<{ banner: Banner; guaranteed: boolean }>()
 const emit = defineEmits<{
@@ -12,7 +13,25 @@ const emit = defineEmits<{
 
 const syncVal = ref<number | null>(null)
 
+// 4★ pity lives in a shared singleton composable (same store the FourStarOdds
+// panel and Pull history read) — no localStorage juggling or storage events here.
+const { pity: pity4, FOUR_HARD: FOUR_MAX, setPity: setPity4, pull, undoPull: undo4, logHit } = useFourStar()
+
+const pity4Pct = computed(() => (pity4.value / FOUR_MAX) * 100)
+const to4Guarantee = computed(() => FOUR_MAX - pity4.value)
+
+// One convene advances BOTH pities and appends a 3★ to the shared stream
+// (auto-upgraded to a guaranteed 4★ on #10). The store owns both counters now,
+// so no separate 5★ `adjust` emit here.
+function onPull() { pull() }
+function undoPull() { undo4() }
+
+// Got a 4★ on the latest pull: log landed pity, reset 4★ counter only.
+function log4Star() { logHit() }
+
+
 const cur = computed(() => Math.max(0, Math.min(props.banner.currentPity || 0, props.banner.maxPity)))
+
 const pct = computed(() => (cur.value / props.banner.maxPity) * 100)
 const softPct = computed(() => (props.banner.yellowFrom / props.banner.maxPity) * 100)
 const pullsLeft = computed(() => props.banner.maxPity - cur.value)
@@ -58,16 +77,42 @@ function doSync() {
         </div>
       </div>
       <div class="flex items-center gap-1.5">
-        <button class="w-9 h-9 rounded-full bg-panel2 border border-hairline text-ink hover:border-brassdim font-700" @click="emit('adjust', -1)">−</button>
-        <button class="w-9 h-9 rounded-full bg-panel2 border border-hairline text-ink hover:border-brassdim font-700" @click="emit('adjust', 1)">+</button>
+        <button class="w-9 h-9 rounded-full bg-panel2 border border-hairline text-ink hover:border-brassdim font-700" @click="undoPull">−</button>
+        <button class="w-9 h-9 rounded-full bg-panel2 border border-hairline text-ink hover:border-brassdim font-700" @click="onPull">+</button>
         <button class="px-4 py-2 rounded-full bg-hard text-[#2a0509] font-700 hover:brightness-110 active:scale-95 transition text-sm" @click="emit('log-five-star')">⭑ Got the 5-star!</button>
       </div>
     </div>
 
     <p class="text-xs text-faint mt-2">
-      Tap <span class="text-ink font-600">+</span> for every pull, including the one that hits — then tap
-      <span class="text-ink font-600">Got the 5-star!</span> to log that exact number and reset to 0.
+      Tap <span class="text-ink font-600">+</span> once per pull — it advances <span class="text-ink font-600">both</span> the 5★ and 4★ pity.
+      Hit <span class="text-ink font-600">Got the 5-star!</span> or <span class="text-soft font-600">Got a 4★!</span> to log it and reset that counter.
     </p>
+
+
+    <!-- 4★ pity — guaranteed every 10 -->
+    <div class="mt-4 pt-4 border-t border-hairline">
+      <div class="flex flex-wrap items-center gap-5">
+        <div class="flex items-baseline gap-1.5">
+          <span class="led text-2xl text-soft">{{ pity4 }}</span>
+          <span class="text-faint text-sm">/ {{ FOUR_MAX }} · 4★ pity</span>
+        </div>
+        <div class="flex-1 min-w-[160px]">
+          <div class="h-2.5 rounded-full bg-void border border-hairline overflow-hidden">
+            <div class="h-full bg-soft transition-all duration-300" :style="{ width: pity4Pct + '%' }" />
+          </div>
+          <div class="text-[11px] text-faint mt-1">
+            Guaranteed 4★ in {{ to4Guarantee }} pull{{ to4Guarantee === 1 ? '' : 's' }}
+          </div>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <button class="w-8 h-8 rounded-full bg-panel2 border border-hairline text-ink hover:border-brassdim font-700" title="manual fix" @click="setPity4(pity4 - 1)">−</button>
+          <button class="w-8 h-8 rounded-full bg-panel2 border border-hairline text-ink hover:border-brassdim font-700" title="manual fix" @click="setPity4(pity4 + 1)">+</button>
+
+          <button class="px-3 py-1.5 rounded-full bg-soft/15 border border-soft/40 text-soft font-700 hover:bg-soft/25 transition text-sm" @click="log4Star">✦ Got a 4★!</button>
+        </div>
+      </div>
+    </div>
+
 
     <div class="flex flex-wrap items-center justify-between gap-3 mt-3 pt-4 border-t border-hairline">
       <div class="text-sm text-faint">
