@@ -35,13 +35,15 @@ const fileInput = ref<HTMLInputElement | null>(null)
 const guaranteed = computed(() => isGuaranteed(activeBanner.value))
 const canDelete = computed(() => state.banners.length > 1)
 
+// order = importance top→bottom; ids drive scrollspy + collapsible sections
 const sections = [
   { id: 'live', label: 'Live tracker' },
   { id: 'predict', label: 'Prediction' },
-  { id: 'odds', label: '5★ / 4★ odds' },
   { id: 'stats', label: 'Stats & charts' },
+  { id: 'odds', label: '5★ / 4★ odds' },
   { id: 'history', label: 'History' }
 ]
+
 
 
 function onLogFiveStar() {
@@ -165,48 +167,59 @@ async function onFile(e: Event) {
       <SectionNav :sections="sections" />
 
       <section id="live" class="scroll-mt-28">
-        <LiveTracker
-          :banner="activeBanner"
-          :guaranteed="guaranteed"
-          @adjust="adjustPity"
-          @sync="syncPity"
-          @log-five-star="onLogFiveStar"
-          @toggle-guarantee="onToggleGuarantee"
-        />
+        <CollapsibleSection title="Live tracker">
+          <LiveTracker
+            :banner="activeBanner"
+            :guaranteed="guaranteed"
+            @adjust="adjustPity"
+            @sync="syncPity"
+            @log-five-star="onLogFiveStar"
+            @toggle-guarantee="onToggleGuarantee"
+          />
+        </CollapsibleSection>
       </section>
 
       <section id="predict" class="scroll-mt-28">
-        <ReelPrediction
-          :banner="activeBanner"
-          :weight-recent="state.weightRecent"
-          @update:weight-recent="setWeightRecent"
-        />
-        <PredictTable :banner="activeBanner" :weight-recent="state.weightRecent" />
-      </section>
-
-      <section id="odds" class="scroll-mt-28">
-        <FiveStarOdds :banner="activeBanner" />
-        <FourStarOdds />
+        <CollapsibleSection title="Prediction">
+          <ReelPrediction
+            :banner="activeBanner"
+            :weight-recent="state.weightRecent"
+            @update:weight-recent="setWeightRecent"
+          />
+          <PredictTable :banner="activeBanner" :weight-recent="state.weightRecent" />
+        </CollapsibleSection>
       </section>
 
       <section id="stats" class="scroll-mt-28">
-        <StatsGrid :banner="activeBanner" />
-        <div class="grid lg:grid-cols-2 gap-4 mb-6">
-          <ProbBars :banner="activeBanner" />
-          <LuckIndex :banner="activeBanner" />
-        </div>
-        <InsightsGrid :banner="activeBanner" />
-        <Charts :banner="activeBanner" />
+        <CollapsibleSection title="Stats & charts">
+          <StatsGrid :banner="activeBanner" />
+          <div class="grid lg:grid-cols-2 gap-4 mb-6">
+            <ProbBars :banner="activeBanner" />
+            <LuckIndex :banner="activeBanner" />
+          </div>
+          <InsightsGrid :banner="activeBanner" />
+          <Charts :banner="activeBanner" />
+        </CollapsibleSection>
+      </section>
+
+      <section id="odds" class="scroll-mt-28">
+        <CollapsibleSection title="5★ / 4★ odds" :open="false">
+          <FiveStarOdds :banner="activeBanner" />
+          <FourStarOdds />
+        </CollapsibleSection>
       </section>
 
       <section id="history" class="scroll-mt-28">
-        <ManualLog :banner="activeBanner" @add="onManualAdd" />
-        <HistoryGrid
-          :banner="activeBanner"
-          @edit="editIndex = $event"
-          @delete="onEditRemove"
-        />
+        <CollapsibleSection title="History">
+          <ManualLog :banner="activeBanner" @add="onManualAdd" />
+          <HistoryGrid
+            :banner="activeBanner"
+            @edit="editIndex = $event"
+            @delete="onEditRemove"
+          />
+        </CollapsibleSection>
       </section>
+
 
 
       <footer class="text-center text-xs text-faint mt-10 pb-4">

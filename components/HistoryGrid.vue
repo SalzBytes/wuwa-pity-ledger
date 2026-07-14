@@ -4,6 +4,12 @@ import type { Band, Banner } from '~/utils/types'
 import { bandOf } from '~/utils/bands'
 import { useFourStar } from '~/composables/useFourStar'
 
+// Which 10-pull multi a record falls in, by its pity value:
+// 1..10 → 10, 11..20 → 20, … 71..80 → 80, then wraps back to 10.
+const batchOf = (v: number) => (((Math.ceil(v / 10) - 1) % 8) * 10) + 10
+
+
+
 
 type Filter = 'all' | 'star5' | Band | 'star4' | 'star3'
 
@@ -30,6 +36,8 @@ const filter = ref<Filter>('all')
 const { history: star4, removeAt: removeStar4 } = useFourStar()
 
 
+
+
 // per-band chip badge counts (5★ only)
 const counts = computed(() => {
   const c: Record<'all' | Band, number> = { all: fiveData.value.length, green: 0, yellow: 0, red: 0 }
@@ -39,10 +47,10 @@ const counts = computed(() => {
 
 const filters = computed<{ key: Filter; label: string; count: number }[]>(() => [
   { key: 'all', label: 'All', count: counts.value.all + star4.value.length + three.value.length },
-  { key: 'star5', label: '5★', count: counts.value.all },
   { key: 'green', label: 'Lucky', count: counts.value.green },
   { key: 'yellow', label: 'Soft', count: counts.value.yellow },
   { key: 'red', label: 'Hard', count: counts.value.red },
+  { key: 'star5', label: '5★', count: counts.value.all },
   { key: 'star4', label: '4★', count: star4.value.length },
   { key: 'star3', label: '3★', count: three.value.length }
 ])
@@ -52,9 +60,9 @@ const filters = computed<{ key: Filter; label: string; count: number }[]>(() => 
 // "All" sorts by rarity ascending (3 → 4 → 5) as requested.
 
 type Chip =
-  | { star: 5; idx: number; value: number; won: boolean | null; band: Band; ordinal: number }
-  | { star: 4; idx: number; value: number; ordinal: number }
-  | { star: 3; idx: number; value: number; ordinal: number }
+  | { star: 5; idx: number; value: number; won: boolean | null; band: Band; ordinal: number; batch: number }
+  | { star: 4; idx: number; value: number; ordinal: number; batch: number }
+  | { star: 3; idx: number; value: number; ordinal: number; batch: number }
 
 const fiveChips = computed<Chip[]>(() =>
   fiveData.value.map((d, idx) => ({
@@ -63,15 +71,19 @@ const fiveChips = computed<Chip[]>(() =>
     value: d.value,
     won: d.won,
     band: bandOf(d.value, props.banner),
-    ordinal: fiveData.value.length - idx
+    ordinal: fiveData.value.length - idx,
+    batch: batchOf(d.value)
   }))
 )
 const fourChips = computed<Chip[]>(() =>
-  star4.value.map((v, idx) => ({ star: 4 as const, idx, value: v, ordinal: star4.value.length - idx }))
+  star4.value.map((v, idx) => ({ star: 4 as const, idx, value: v, ordinal: star4.value.length - idx, batch: batchOf(v) }))
 )
+
+
 const threeChips = computed<Chip[]>(() =>
-  three.value.map((v, idx) => ({ star: 3 as const, idx, value: v, ordinal: three.value.length - idx }))
+  three.value.map((v, idx) => ({ star: 3 as const, idx, value: v, ordinal: three.value.length - idx, batch: batchOf(v) }))
 )
+
 
 const chips = computed<Chip[]>(() => {
   const f = filter.value
@@ -122,6 +134,8 @@ const chips = computed<Chip[]>(() => {
       >
         <div class="text-[10px] opacity-60">{{ c.star }}★ #{{ c.ordinal }}</div>
         <div class="font-700 font-mono text-lg leading-none">{{ c.value }}</div>
+        <div class="absolute -top-1.5 -left-1.5 px-1 rounded-full bg-brass/90 text-[#241a04] text-[9px] font-700 leading-tight" :title="`falls in the ${c.batch}-pull multi (pity ${c.value})`">{{ c.batch }}</div>
+
         <div v-if="c.star === 5 && banner.has5050 && c.won !== null" class="text-[10px] mt-0.5">
           {{ c.won ? 'won' : 'lost' }}
         </div>
@@ -134,6 +148,8 @@ const chips = computed<Chip[]>(() => {
         </div>
         <!-- 4★ delete only (3★ are read-only) -->
         <button v-else-if="c.star === 4" class="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-panel2 border border-hairline text-hard text-[10px] hidden group-hover:flex items-center justify-center hover:border-hard" @click="removeStar4(c.idx)">✕</button>
+
+
 
       </div>
     </div>

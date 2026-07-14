@@ -14,6 +14,8 @@ export interface Pull {
 }
 
 
+
+
 export interface Banner {
   id: string
   name: string

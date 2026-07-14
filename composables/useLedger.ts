@@ -256,7 +256,9 @@ export function useLedger() {
   }
 
   // delete a 5★ by its position within the 5★-only view
+
   function deletePull(idx: number) {
+
     const b = activeBanner.value
     let seen = -1
     const at = b.data.findIndex(d => (d.rarity ?? 5) === 5 && ++seen === idx)
@@ -299,6 +301,8 @@ export function useLedger() {
     editPull,
 
     deletePull,
+
+
     setWeightRecent,
     replaceState
   }
