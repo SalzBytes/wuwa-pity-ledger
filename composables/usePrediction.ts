@@ -3,8 +3,10 @@ import type { Banner } from '~/utils/types'
 export interface Prediction {
   value: number
   confidence: number // % of draws that landed on the modal value
+  distribution: { value: number; prob: number }[] // per-pity probability, high→low
   sampleOne: () => number
 }
+
 
 // Empirical bootstrap over a banner's own history.
 // weightRecent applies geometric decay (recent pulls count more).
@@ -66,5 +68,9 @@ export function samplePrediction(banner: Banner, weightRecent: boolean): Predict
     }
   }
 
-  return { value: best, confidence: (bestCount / SIM) * 100, sampleOne }
+  const distribution = Object.entries(freq)
+    .map(([k, v]) => ({ value: Number(k), prob: (v / SIM) * 100 }))
+    .sort((a, b) => b.prob - a.prob)
+
+  return { value: best, confidence: (bestCount / SIM) * 100, distribution, sampleOne }
 }

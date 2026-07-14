@@ -168,6 +168,9 @@ async function onFile(e: Event) {
         @update:weight-recent="setWeightRecent"
       />
 
+      <PredictTable :banner="activeBanner" :weight-recent="state.weightRecent" />
+
+
       <StatsGrid :banner="activeBanner" />
 
       <div class="grid lg:grid-cols-2 gap-4 mb-6">

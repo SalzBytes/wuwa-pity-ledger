@@ -13,12 +13,21 @@ const chipCls: Record<string, string> = {
 }
 
 const filter = ref<'all' | Band>('all')
-const filters: { key: 'all' | Band; label: string }[] = [
-  { key: 'all', label: 'All' },
-  { key: 'green', label: 'Lucky' },
-  { key: 'yellow', label: 'Soft' },
-  { key: 'red', label: 'Hard' }
-]
+
+// count per band for chip badges
+const counts = computed(() => {
+  const c = { all: props.banner.data.length, green: 0, yellow: 0, red: 0 }
+  for (const d of props.banner.data) c[bandOf(d.value, props.banner)]++
+  return c
+})
+
+const filters = computed<{ key: 'all' | Band; label: string; count: number }[]>(() => [
+  { key: 'all', label: 'All', count: counts.value.all },
+  { key: 'green', label: 'Lucky', count: counts.value.green },
+  { key: 'yellow', label: 'Soft', count: counts.value.yellow },
+  { key: 'red', label: 'Hard', count: counts.value.red }
+])
+
 
 // data is newest-first; number them by real chronological order
 const entries = computed(() =>
@@ -48,7 +57,8 @@ const entries = computed(() =>
               ? 'border-brass text-brassglow bg-panel3'
               : 'border-hairline text-faint hover:text-ink'"
             @click="filter = f.key"
-          >{{ f.label }}</button>
+          >{{ f.label }}<span class="ml-1 opacity-60">{{ f.count }}</span></button>
+
         </div>
         <div class="text-xs text-faint">{{ banner.data.length }} logged · newest first</div>
       </div>
